@@ -39,19 +39,19 @@ The pipeline targets Wazuh, but the approach applies to any rule-based detection
 
 ## A Tiered Model Strategy
 
-Not every task in the pipeline needs the same model. Routing all calls through the most capable available model would be slower and more expensive than necessary, so the pipeline assigns models by task:
+Not every task in the pipeline needs the same model. Routing all calls through the most capable available model would be slower and more expensive than necessary, so the pipeline assigns models by task tier.
 
-**Classification and documentation** use Claude Sonnet. These tasks involve structured reasoning over a well-defined input, run at high frequency, and do not require deep specialization. Speed and cost efficiency matter here.
+**Classification and documentation** run on a **fast, cost-efficient model**. These tasks involve structured reasoning over a well-defined input, run at high frequency, and do not require deep specialization. Speed and cost efficiency matter here.
 
-**Rule authoring and refinement** use Claude Opus. Writing a correct, narrowly scoped Wazuh rule requires understanding the rule inheritance model, knowing which XML elements are valid, and making judgment calls about which alert fields to match on. This is where quality most directly determines whether the output is usable.
+**Rule authoring and refinement** run on a **stronger reasoning model**. Writing a correct, narrowly scoped Wazuh rule requires understanding the rule inheritance model, knowing which XML elements are valid, and making judgment calls about which alert fields to match on. This is where quality most directly determines whether the output is usable.
 
-The split mirrors how a human team might divide the work: one person triages and documents, a more experienced engineer writes the actual rule.
+The reference implementation paired a lightweight reasoning model for the first tier with a higher-capability one for the second.[^models] The split is what matters, not the specific products — any capable provider offers an equivalent pairing, and the choice will age faster than the pattern. It mirrors how a human team divides the work: one person triages and documents, a more experienced engineer writes the actual rule.
 
 ---
 
 ## Classification: Deciding What Is Noise
 
-The first AI step is false positive classification. For each new alert, the pipeline sends the alert JSON to Claude Sonnet and asks for a boolean verdict, a confidence score between 0.0 and 1.0, and a short explanation of the reasoning.
+The first AI step is false positive classification. For each new alert, the pipeline sends the alert JSON to the fast classification model and asks for a boolean verdict, a confidence score between 0.0 and 1.0, and a short explanation of the reasoning.
 
 ```python
 prompt = f"""You are a Wazuh SIEM analyst. Examine the following Wazuh alert and determine
@@ -78,7 +78,7 @@ One important constraint: this classification step is not a general-purpose SOC 
 
 ## Rule Authoring and the Refinement Loop
 
-Once an alert clears the confidence threshold, Claude Opus drafts the suppression rule. The prompt pushes toward the narrowest possible match — targeting specific users, program names, source IPs, or command patterns — rather than silencing the parent rule entirely.
+Once an alert clears the confidence threshold, the stronger reasoning model drafts the suppression rule. The prompt pushes toward the narrowest possible match — targeting specific users, program names, source IPs, or command patterns — rather than silencing the parent rule entirely.
 
 A broad suppression rule is its own security risk. It can hide future real alerts that share the same parent rule ID. Narrow rules are harder to write. They are also the only kind worth writing.
 
@@ -104,7 +104,7 @@ cmd = [
 ]
 ```
 
-The temporary file is removed after the test regardless of outcome. If validation fails, the daemon's error output is passed back to Claude Opus with a request to fix the rule. The loop runs up to five times. If the rule still fails after that, the pipeline logs an error and no pull request is created.
+The temporary file is removed after the test regardless of outcome. If validation fails, the daemon's error output is passed back to the authoring model with a request to fix the rule. The loop runs up to five times. If the rule still fails after that, the pipeline logs an error and no pull request is created.
 
 This is where the approach delivers its most practical value. A human going through the same edit-test-fix cycle would spend several minutes per iteration. The automated loop finishes in seconds — and the refinement prompts can include knowledge of failure patterns encountered before, such as the non-existent `<options>no_alert</options>` element that the model occasionally produces without explicit instruction to avoid it.
 
@@ -114,7 +114,7 @@ AI-generated rules face the same validation bar as hand-written ones. That is no
 
 ## From Validation to Review
 
-A rule that passes validation is not deployed automatically. The pipeline opens a GitHub pull request, with Claude Sonnet writing a Markdown description covering the original alert, the false positive reasoning, the rule change, and relevant caveats. The reviewer gets a complete, readable summary without having to reconstruct context from logs or tickets.
+A rule that passes validation is not deployed automatically. The pipeline opens a GitHub pull request, with the documentation model writing a Markdown description covering the original alert, the false positive reasoning, the rule change, and relevant caveats. The reviewer gets a complete, readable summary without having to reconstruct context from logs or tickets.
 
 A duplicate check at the start of the pipeline prevents multiple PRs from being opened for the same Wazuh rule ID. If an open PR already exists for that rule, the alert is skipped. This keeps the review queue manageable during periods of sustained false positive activity.
 
@@ -136,24 +136,28 @@ Judgment before delegation. The pipeline is built around that order, not the rev
 
 ---
 
-## Conclusion
+## Before You Run This: Data Confidentiality and Model Selection
 
-False positive management is a good fit for AI assistance because the workflow is repetitive, the inputs are structured, and the output can be verified against a hard standard. Using lighter models for high-frequency classification and documentation while reserving more capable models for rule authoring keeps the approach practical at scale.
+There is one decision that comes before any of the engineering above, and it does not belong in a footnote.
 
-The goal is not to remove humans from the loop. It is to reduce the distance between a false positive being observed and a reviewed suppression rule being ready to deploy — while keeping every step that requires judgment firmly in human hands.
-
----
-
-## On Data Confidentiality and Model Selection
-
-The pipeline described here sends real Wazuh alert data to external LLM APIs — hostnames, usernames, source IP addresses, process names, command-line arguments. In the examples above, those APIs are publicly hosted Anthropic models. This is a deliberate architectural choice made for demonstration purposes. It is not a recommendation for production use.
+The pipeline described here sends real Wazuh alert data to external LLM APIs — hostnames, usernames, source IP addresses, process names, command-line arguments. In the examples above, those APIs are publicly hosted models, used for demonstration. That is not a recommendation for production use.
 
 Wazuh alerts regularly contain information that is sensitive under GDPR, HIPAA, or customer contracts: internal network topology, account names, file paths, details about ongoing incidents. Sending that data to a public cloud API means it leaves the organisation's control — regardless of whether the provider offers a data processing agreement or commits to not using inputs for training.
 
-Before running a pipeline like this in production, two questions require written answers, not assumptions:
+Before running a pipeline like this in production, two things require written answers, not assumptions:
 
 **Self-hosted models are the safer option.** Running an open-weight model on internal infrastructure keeps alert data within the organisation's network. The pipeline's model dispatch layer is abstracted, so switching from a public API to a locally hosted inference endpoint is a configuration change, not a rewrite.
 
 **Customer and contractual alignment is required if self-hosting is not feasible.** Using a public LLM API to process customer security telemetry must be covered by applicable data processing agreements and disclosed to the customer. Assuming that general-purpose API terms cover security telemetry is not sufficient. This needs to be confirmed in writing before going live.
 
-The architectural pattern works regardless of the inference backend. Choosing that backend is a data governance decision. Article 2 of this series addresses that decision in full.
+In managed-security work with regulated organisations, this is rarely the blocker people expect it to be. The self-hosted path is usually the one that survives a customer's procurement review, and building the pipeline backend-agnostic from the start means that choice stays open rather than becoming a rewrite later. The architectural pattern works regardless of the inference backend. Choosing that backend is a data governance decision — and Article 2 of this series addresses it in full.
+
+---
+
+## Conclusion
+
+False positive management is a good fit for AI assistance because the workflow is repetitive, the inputs are structured, and the output can be verified against a hard standard. Using lighter models for high-frequency classification and documentation while reserving more capable models for rule authoring keeps the approach practical at scale.
+
+From a managed-security and governance standpoint, the point of a pipeline like this is not that AI can assist Wazuh operations — it is where validation and human accountability are enforced while it does. The goal is not to remove humans from the loop. It is to reduce the distance between a false positive being observed and a reviewed suppression rule being ready to deploy — while keeping every step that requires judgment firmly in human hands.
+
+[^models]: The reference implementation used Anthropic's Claude Sonnet (classification and documentation) and Claude Opus (rule authoring) at the time of writing. Model names date quickly; treat these as an example of the two-tier split, not a recommendation.

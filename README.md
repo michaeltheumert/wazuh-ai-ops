@@ -1,80 +1,86 @@
-# AI-Augmented Wazuh Operations
+# wazuh-ai-ops
 
-A five-part article series on controlled AI integration in Wazuh-based security environments.  
-Published as part of the [Wazuh Ambassadors Program](https://wazuh.com/community/ambassador-program/).
+**Controlled AI integration in Wazuh-based security operations — the code, rules, and decision records behind the article series *AI-Augmented Wazuh Operations*.**
 
-> *Validation before automation. Judgment before delegation.*
-
----
-
-## About This Series
-
-Most AI-in-security articles fall into one of two categories: theoretical frameworks that never touch a real SIEM, or automation demos that skip the hard questions about validation and control.
-
-This series is neither.
-
-*AI-Augmented Wazuh Operations* covers how AI can be integrated into Wazuh-based security operations in a way that is practical, verifiable, and auditable — using Wazuh as the implementation environment throughout. Not AI as a replacement for analysts, but as a tool that handles the repetitive, well-defined work quickly enough that analysts can focus on the decisions that actually require judgment.
-
-Each article is grounded in real implementation experience. The code runs. The rules are validated against real Wazuh environments. The governance questions are answered before deployment, not after.
+Michael Theumert ([SECaaS.IT](https://www.linkedin.com/in/michael-theumert/)) · Dominik Sigl (iSecNG)
 
 ---
 
-## Articles
+This repository is the working companion to a five-part series on where AI belongs in a Wazuh operation — and where it does not. The series argues one position throughout:
 
-| # | Title | Framework Layer | Lead Author | Status |
-|---|-------|----------------|-------------|--------|
-| 1 | [Taming Alert Fatigue](./articles/01-taming-alert-fatigue.md) | Improve | Theumert | ✅ Ready |
-| 2 | [Responsible AI in Security Operations](./articles/02-responsible-ai-operations.md) | Govern | Theumert + Sigl | 🔄 In Progress |
-| 3 | [Detection Engineering at Scale](./articles/03-detection-engineering-scale.md) | Detect | Sigl | 📋 Planned |
-| 4 | [Alert Enrichment and Triage Automation](./articles/04-alert-enrichment-triage.md) | Understand | Sigl | 📋 Planned |
-| 5 | [AI Does Not Replace Analysts](./articles/05-ai-does-not-replace-analysts.md) | Reflect | Theumert | 📋 Planned |
+> **AI does not get its own rulebook. It has to earn its place inside the engineering discipline that already exists.**
 
-**Publication schedule:** Weekly, starting August 2026.
+That means everything here is held to the standards the discipline already had: rules are validated against a running Wazuh daemon, not asserted from documentation; the choice of where models run is a governance decision recorded in an ADR, not a default; and every pipeline ends at a human who can be held to the decision.
 
----
+Two principles carry the series, and they shape the code:
 
-## Authors
-
-**Michael Theumert**  
-Co-Founder, SECaaS.IT (XaaS Enterprise GmbH) · CISO, ValueMiner GmbH · Wazuh Ambassador  
-[LinkedIn](https://www.linkedin.com/in/michael-theumert/) · [SECaaS.IT](https://secaas.it)
-
-**Dominik Sigl**  
-Co-Founder, iSecNG GmbH · Wazuh Community  
-[LinkedIn](https://www.linkedin.com/in/dominik-sigl/) · [iSecNG](https://www.isecng.de)
+- **Validation before automation.** No generated rule reaches a review queue without passing `wazuh-analysisd -t` against a real instance.
+- **Judgment before delegation.** No pipeline closes a ticket, merges a rule, or disposes of an alert on its own. The decision stays with a person.
 
 ---
 
-## Repository Structure
+## What's here
 
 ```
 wazuh-ai-ops/
-├── README.md                             ← You are here
-├── style-guide.md                        ← Writing rules, voice, recurring themes
-├── CONTRIBUTORS.md                       ← Collaboration guidelines
-├── proposal/
-│   └── ambassador-proposal.md            ← Wazuh Ambassador Program proposal
-├── articles/
-│   ├── 01-taming-alert-fatigue.md
-│   ├── 02-responsible-ai-operations.md
-│   ├── 03-detection-engineering-scale.md
-│   ├── 04-alert-enrichment-triage.md
-│   └── 05-ai-does-not-replace-analysts.md
-└── assets/
-    └── diagrams/                         ← SVG/PNG illustrations for articles
+├── articles/          The five articles + series intro (English, Markdown)
+├── adr/               Architecture Decision Records — the governance trail
+├── assets/
+│   └── diagrams/      Architecture diagram; the validation loop explained
+├── workflows/         Reference pipeline sketches (e.g. Wazuh + n8n + LLM)
+├── proposal/          Wazuh Ambassador Program proposal
+├── CONTRIBUTORS.md
+├── style-guide.md
+└── README.md
 ```
 
-## Workflow
-
-- Each article lives in a feature branch: `article/01-taming-alert-fatigue`
-- Pull Request per article → review → merge to `main` after mutual sign-off
-- `main` contains only published or fully approved content
-
-See [CONTRIBUTORS.md](./CONTRIBUTORS.md) for details.
+> **Status:** The articles publish monthly starting August 2026. Code and rule examples land alongside each article. Until an example is marked *validated*, treat it as a reference to test in your own environment — see [Validation](#validation) below.
 
 ---
 
-## License
+## The articles
 
-Articles in this repository are published under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).  
-Code samples are published under [MIT License](https://opensource.org/licenses/MIT).
+| # | Article | Layer | Core question |
+|---|---------|-------|---------------|
+| 1 | [Taming Alert Fatigue](./articles/01-taming-alert-fatigue.md) | Improve | How can AI reduce false positives without new blind spots? |
+| 2 | [Responsible AI in Security Operations](./articles/02-responsible-ai-operations.md) | Govern | When is AI *allowed* to process real security telemetry? |
+| 3 | [Detection Engineering at Scale](./articles/03-detection-engineering-scale.md) | Detect | Can AI help write rules for techniques not yet seen? |
+| 4 | [Alert Enrichment and Triage Automation](./articles/04-alert-enrichment-triage.md) | Understand | Can AI give analysts senior-level context at speed? |
+| 5 | [AI Does Not Replace Analysts](./articles/05-ai-does-not-replace-analysts.md) | Reflect | Which decisions must stay human, and why? |
+
+Start with the article closest to your problem, or read [the series intro](./articles/00-series-intro.md) for the full arc.
+
+---
+
+## The architecture in one paragraph
+
+A new Wazuh alert enters the pipeline. A lightweight model classifies whether it is a false positive and how confident it is; only high-confidence cases proceed. A higher-capability model drafts the narrowest possible suppression or detection rule. That rule is written into a real Wazuh instance and checked with `wazuh-analysisd -t` — if it fails to load, the daemon's error goes back to the model for a bounded number of fix attempts. A rule that passes opens a pull request with a readable, auditable summary. A human reviews and merges. The model dispatch layer is abstracted, so the inference backend — public API or self-hosted — is a configuration choice, not a rewrite. See [`assets/diagrams/architecture.md`](./assets/diagrams/architecture.md) for the full diagram and the reasoning behind each boundary.
+
+---
+
+## Validation
+
+The rules and pipelines here are examples, and the series is explicit that a rule you have not tested is a rule you do not have. Before trusting any rule:
+
+1. Note the Wazuh version you are validating against — the rule schema differs between versions.
+2. Write the rule into a non-production Wazuh instance.
+3. Run `/var/ossec/bin/wazuh-analysisd -t` and confirm it loads without error.
+4. Confirm it fires on the events you expect — and stays quiet on the ones you don't.
+
+Examples that have been validated against a specific version say so, and name the version. Examples that have not are marked as unvalidated references. We do not assert rule behaviour from documentation alone.
+
+---
+
+## Data and governance
+
+Several pipelines here process real Wazuh alert data — hostnames, usernames, IPs, command lines. That data is sensitive under GDPR, sectoral rules, and customer contracts. **Do not point these pipelines at a public LLM API with production data before reading [Article 2](./articles/02-responsible-ai-operations.md) and recording the backend decision in an ADR.** The [`adr/`](./adr/) directory holds the template and a worked example. This is not optional fine print; it is the first architectural constraint.
+
+---
+
+## Contributing / questions
+
+The series is authored by two Wazuh practitioners — governance/managed-security (Theumert) and detection engineering/operations (Sigl). Issues and discussion welcome. Internal review happens per the [style guide](./style-guide.md); article content is English.
+
+---
+
+*If this repository is useful, the most useful thing you can do back is tell us where a rule failed to load in your environment, and on which Wazuh version. That is exactly the kind of ground truth the series is built on.*
