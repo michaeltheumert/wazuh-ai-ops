@@ -63,4 +63,4 @@ That is the whole point. Not what AI *can* do in security operations, but where 
 
 ---
 
-*Series repository: [github.com/mtheumert/wazuh-ai-ops](https://github.com/mtheumert/wazuh-ai-ops)*
+*Series repository: [github.com/michaeltheumert/wazuh-ai-ops](https://github.com/michaeltheumert/wazuh-ai-ops)*
