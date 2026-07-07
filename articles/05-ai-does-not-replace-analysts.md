@@ -115,4 +115,4 @@ None of this is abstract in a Wazuh operation. It is the merge on a suppression 
 ---
 
 *This concludes the AI-Augmented Wazuh Operations series.*  
-*All articles: [github.com/mtheumert/wazuh-ai-ops](https://github.com/mtheumert/wazuh-ai-ops)*
+*All articles: [github.com/michaeltheumert/wazuh-ai-ops](https://github.com/michaeltheumert/wazuh-ai-ops)*
