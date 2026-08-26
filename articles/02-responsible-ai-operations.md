@@ -46,7 +46,9 @@ This is not a legal survey. It is the short list of regimes that turn "we sent t
 
 **GDPR.** Security logs are full of personal data. A username is personal data. A source IP tied to an identifiable person is personal data. Sending it to a third-party processor outside the EU — or to any processor without a valid legal basis and agreement — is a transfer that needs a basis. "We were debugging an alert" is not one.
 
-**NIS2.** The directive raises the bar on the security of essential and important entities, and by extension on the security of the tooling those entities operate. A security operations pipeline that quietly exfiltrates telemetry to an ungoverned endpoint is not a strong control. It is a new attack surface and a governance failure wearing an automation costume.
+**NIS2.** The directive raises the bar on the security of essential and important entities, and by extension on the security of the tooling those entities operate. A security operations pipeline that quietly exfiltrates telemetry to an ungoverned endpoint is not a strong control. It is a new attack surface and a governance failure wearing an automation costume. For German operators specifically, this is no longer a directive to prepare for: the national implementation (NIS2UmsuCG) entered into force on 6 December 2025, and the obligations described above are current law, not a future compliance item.
+
+**The EU AI Act.** The regulations above ask where data may go. The AI Act asks something adjacent: what obligations attach to the AI system itself, and to the people who operate it. Three questions are worth answering before this pipeline goes live: Are we a provider or a deployer of the AI system doing the classifying and drafting? What AI-literacy or training obligations apply to the analysts who review its output? Is our documentation of AI use, human oversight, and accountability sufficient to show, not just assert? None of this replaces the ADR from the next section — if anything, it belongs inside it.
 
 **Customer contracts.** For a managed security provider, this is often the sharpest edge. The clause that says "customer data will be processed only within the following boundaries" was signed by someone, and it rarely anticipated an analyst pasting that customer's alerts into a public model. The contract does not care that the tool was helpful.
 
@@ -97,7 +99,7 @@ If any of these four is missing, the pipeline runs in a lab, not in production. 
 The instrument for the third artifact is boring on purpose: an Architecture Decision Record. One page, made once, reviewed on a schedule.
 
 ```markdown
-# ADR-014: Inference backend for the alert-tuning pipeline
+# ADR-001: Inference backend for the alert-tuning pipeline
 
 ## Status
 Accepted — 2026-08-15. Review due 2027-02-15.

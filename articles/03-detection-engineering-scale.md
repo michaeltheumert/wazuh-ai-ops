@@ -90,6 +90,8 @@ The intent of the rule does not change the bar. A suppression rule that fails to
 
 So detection rules earn no exemption. If anything they warrant more suspicion, because their failure is invisible where a suppression rule's failure is merely loud.
 
+Loading correctly and matching correctly are two different claims, and only the first is checked by `wazuh-analysisd -t`. Closing that gap means the same `wazuh-logtest` pass Article 1 describes — the sample that should trigger the rule, and a near-miss that should not, run before the pull request opens. As in Article 1, that pass is the required next step for this loop, not something the code shown here already does; do not treat a rule that has only cleared `wazuh-analysisd -t` as behaviorally validated.
+
 A note on data flow, since this pipeline reads real logs: the log sample handed to the model is production data, with the same sensitivity as any alert in Article 1 — hostnames, accounts, paths. Everything Article 2 said about where that data is allowed to go applies here unchanged. The generation pipeline is backend-agnostic by the same design; the inference endpoint can and, for real log samples, should be one you control. Detection engineering does not get a governance discount.
 
 ---
