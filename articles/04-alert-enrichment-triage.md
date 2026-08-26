@@ -70,6 +70,23 @@ A good brief reads like the two sentences a senior analyst would say leaning ove
 
 ---
 
+## Telemetry is evidence, never instruction
+
+Everything this pipeline hands to the model — the alert JSON, the enrichment payloads, the threat-intel record, the command line a host actually ran — originates outside anyone's control. A compromised endpoint can produce a process name or a log line deliberately crafted to look like an instruction rather than data. Once a pipeline lets a model call tools or take the next step based on what it read, that crafted line is no longer a curiosity — it is an attack surface.
+
+The mitigation is architectural, not a smarter prompt:
+
+- Never derive system instructions from telemetry content — telemetry fills a data field, never the instruction itself.
+- Treat structured fields (hostname, user, command line) as data, not as text to be interpreted as directives, even inside the prompt.
+- Allowlist tool permissions explicitly; do not let a model's output decide which tool runs next.
+- Never execute model output directly as a shell, XML, or API command — the validation loop in Article 1 exists precisely so nothing the model writes reaches the system unchecked.
+- Mark enrichment from sources you do not control as untrusted, and say so in the brief.
+- Keep credential boundaries between the orchestrator and the model — the model should never hold or see credentials it does not need for the current step.
+
+None of this is exotic once it is named. It is the same discipline as validating a suppression rule before it loads: assume the input can be adversarial, and design so that assumption costs nothing when it turns out to be true.
+
+---
+
 ## A concrete pipeline: Wazuh + n8n + LLM
 
 The pieces fit together without custom glue code. Wazuh fires an alert to a webhook. An n8n workflow catches it, calls the enrichment sources in parallel, hands the assembled context to the model for a brief, and posts the result to wherever the analyst already works — a dashboard, a ticket, a channel.

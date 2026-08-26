@@ -70,6 +70,8 @@ Respond ONLY with valid JSON, no markdown fences."""
 
 The confidence score acts as a gate. Only alerts where the model is at least 80% confident — configurable — move forward. It is better to miss an occasional tuning opportunity than to suppress alerts that are borderline or context-dependent.
 
+That threshold is a routing heuristic, not a calibrated probability of correctness, and treating it as the latter is a mistake worth naming before it is made. A model's self-reported confidence does not automatically correspond to its actual accuracy. Before relying on 80% — or any other number — as a gate, calibrate it against a labelled set of historical alerts: check precision and recall at that threshold, and specifically the false-suppression rate, since that is the failure mode this gate exists to prevent. Different rule families may warrant different thresholds once you have that data.
+
 The reasoning string travels through the rest of the pipeline and ends up in the pull request description, so the reviewer can see why the model flagged the alert. That traceability is not optional. It is what makes the pipeline auditable.
 
 One important constraint: this classification step is not a general-purpose SOC triage mechanism. It is a narrow filter for rule creation decisions. Using it as a primary alert disposition tool for an incident response workflow would be a misapplication — and a dangerous one.
@@ -105,6 +107,8 @@ cmd = [
 ```
 
 The temporary file is removed after the test regardless of outcome. If validation fails, the daemon's error output is passed back to the authoring model with a request to fix the rule. The loop runs up to five times. If the rule still fails after that, the pipeline logs an error and no pull request is created.
+
+Loading is not the same as matching. `wazuh-analysisd -t` proves the rule parses; it says nothing about whether it fires on the events it should, or stays silent on the ones it shouldn't. The code above checks only the first half. Closing the second half means adding a `wazuh-logtest` pass — a small fixture of positive and negative sample events, run before a rule reaches review — and this repository's README validation checklist requires exactly that. **That extension is not yet reflected in the code shown above**; treat it as the next hardening step for this pipeline, not as behavior it already has. A rule you have not tested this way is a rule whose match behavior you are still assuming, not one you know.
 
 This is where the approach delivers its most practical value. A human going through the same edit-test-fix cycle would spend several minutes per iteration. The automated loop finishes in seconds — and the refinement prompts can include knowledge of failure patterns encountered before, such as the non-existent `<options>no_alert</options>` element that the model occasionally produces without explicit instruction to avoid it.
 
@@ -142,11 +146,13 @@ There is one decision that comes before any of the engineering above, and it doe
 
 The pipeline described here sends real Wazuh alert data to external LLM APIs — hostnames, usernames, source IP addresses, process names, command-line arguments. In the examples above, those APIs are publicly hosted models, used for demonstration. That is not a recommendation for production use.
 
+Every alert used in the examples above is synthetic or fully anonymised — no customer or production telemetry was sent to a public API at any point while writing this series. That is deliberate, not incidental: it is the same boundary ADR-001 draws for production use, applied to how this series itself was built.
+
 Wazuh alerts regularly contain information that is sensitive under GDPR, HIPAA, or customer contracts: internal network topology, account names, file paths, details about ongoing incidents. Sending that data to a public cloud API means it leaves the organisation's control — regardless of whether the provider offers a data processing agreement or commits to not using inputs for training.
 
 Before running a pipeline like this in production, two things require written answers, not assumptions:
 
-**Self-hosted models are the safer option.** Running an open-weight model on internal infrastructure keeps alert data within the organisation's network. The pipeline's model dispatch layer is abstracted, so switching from a public API to a locally hosted inference endpoint is a configuration change, not a rewrite.
+**Self-hosting is usually the stronger option for staying in control of the data — not automatically the "safer" one in every sense.** Running an open-weight model on internal infrastructure keeps alert data within the organisation's network, but it also transfers operational responsibility — model supply chain, endpoint hardening, patching — onto you. Article 2 weighs that tradeoff in full; here, the point is narrower: the pipeline's model dispatch layer is abstracted, so switching from a public API to a locally hosted inference endpoint is a configuration change, not a rewrite.
 
 **Customer and contractual alignment is required if self-hosting is not feasible.** Using a public LLM API to process customer security telemetry must be covered by applicable data processing agreements and disclosed to the customer. Assuming that general-purpose API terms cover security telemetry is not sufficient. This needs to be confirmed in writing before going live.
 
@@ -160,4 +166,4 @@ False positive management is a good fit for AI assistance because the workflow i
 
 From a managed-security and governance standpoint, the point of a pipeline like this is not that AI can assist Wazuh operations — it is where validation and human accountability are enforced while it does. The goal is not to remove humans from the loop. It is to reduce the distance between a false positive being observed and a reviewed suppression rule being ready to deploy — while keeping every step that requires judgment firmly in human hands.
 
-[^models]: The reference implementation used Anthropic's Claude Sonnet (classification and documentation) and Claude Opus (rule authoring) at the time of writing. Model names date quickly; treat these as an example of the two-tier split, not a recommendation.
+[^models]: The reference implementation used Anthropic's Claude Sonnet (classification and documentation) and Claude Opus (rule authoring) at the time of writing, tested exclusively against synthetic and anonymised alert data — see the data-handling note above and ADR-001. Model names date quickly; treat these as an example of the two-tier split, not a recommendation.

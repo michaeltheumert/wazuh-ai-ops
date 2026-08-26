@@ -66,8 +66,11 @@ The rules and pipelines here are examples, and the series is explicit that a rul
 2. Write the rule into a non-production Wazuh instance.
 3. Run `/var/ossec/bin/wazuh-analysisd -t` and confirm it loads without error.
 4. Confirm it fires on the events you expect — and stays quiet on the ones you don't.
+5. Do this with `wazuh-logtest`, not by inspection: feed it real or synthetic log lines that should match, and lines that deliberately should not. A rule that loads is a rule that parses — not a rule that matches correctly.
 
 Examples that have been validated against a specific version say so, and name the version. Examples that have not are marked as unvalidated references. We do not assert rule behaviour from documentation alone.
+
+**Written for Wazuh 4.14.x at the time of writing** — the XML constructs and CLI commands referenced here match that release branch's documentation. This note reflects a documentation/construct review, not a confirmed test run against a live 4.14.x instance; update it to "Tested against" only once someone has actually run the examples against that version and can name the result. Validate against your own deployed version before use in any case — the rule schema and available constructs differ between versions.
 
 ---
 
