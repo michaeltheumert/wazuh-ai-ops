@@ -54,12 +54,14 @@ In Articles 1–4, this appears implicitly: in the confidence threshold that kee
 
 | Element | Rule |
 |---------|------|
-| **Length** | 1,200–1,800 words (code blocks excluded) |
+| **Length** | 1,200–1,800 words (code blocks excluded)[^article-3-length] |
 | **Language** | English |
 | **Headings** | Sentence case, not title case (`## Where AI fits`, not `## Where AI Fits`) |
 | **Code blocks** | Always include language tag (` ```python `, ` ```xml `, ` ```bash `) |
 | **Emphasis** | Bold for terms introduced for the first time; italics sparingly |
 | **Series tag** | Each article opens with: `*Article N of 5 — AI-Augmented Wazuh Operations*` |
+
+[^article-3-length]: Article 3 is an intentional exception to the standard length range. Its four-stage detection-engineering lifecycle requires additional space to cover telemetry onboarding, threat modelling, production tuning, and CTI-driven coverage as one coherent workflow.
 
 ---
 
@@ -101,7 +103,7 @@ When describing Wazuh rule behavior, XML schema constraints, or parser behavior:
 |---|-------|-------|---------------------|
 | 1 | Taming Alert Fatigue | Improve | The core pattern: AI drafts, system validates, human reviews |
 | 2 | Responsible AI in Security Operations | Govern | Governance first, not last — data residency, contractual alignment |
-| 3 | Detection Engineering at Scale | Detect | AI-assisted rule creation for techniques not yet seen |
+| 3 | Detection Engineering at Scale | Detect | AI-assisted detection engineering from telemetry onboarding to threat-driven coverage |
 | 4 | Alert Enrichment and Triage Automation | Understand | Context at analyst speed, judgment still human |
 | 5 | AI Does Not Replace Analysts | Reflect | The thesis made explicit: reallocating the boundary |
 
