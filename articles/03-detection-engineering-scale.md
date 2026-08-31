@@ -4,128 +4,247 @@
 
 ---
 
-## A Technique You Read About on Monday
+## Two Kinds of Blind Spot
 
-A new technique gets published on Monday. A credible write-up, a proof of concept, maybe a fresh MITRE ATT&CK sub-technique ID. By Tuesday your inbox has three people asking whether you're covered.
+A new application goes live and its logs start arriving a week later. They reach the Wazuh manager, they are written to disk, and little else happens. No useful decoder claims the payload, no dependable fields are extracted, and every downstream detection idea is forced to work against raw text.
 
-You are not, yet. Writing the detection means reading the technique closely, figuring out which of your log sources would even see it, mapping the behaviour to specific fields, drafting a Wazuh rule, testing it against real events, getting it reviewed, and deploying it. Each step is a normal day's work. Done properly, the whole chain takes longer than the gap between disclosure and the first opportunistic scan.
+Elsewhere in the same environment, a vendor publishes a new attack technique or a sector advisory. By the next morning somebody asks whether you are covered. The answer is not a property of the advisory. It depends on whether your telemetry can see the behaviour, whether the relevant fields are decoded, whether a rule exists, and whether that rule has been tested against events that should and should not trigger it.
 
-That gap — between a technique existing in the world and a rule existing in your ruleset — is where detection engineering actually lives. And it is a throughput problem long before it is a talent problem.
+These look like different problems, but they are stages of the same coverage problem. Detection engineering is constrained by the attention of people who understand both the threat and the logs, and those are often the same people already handling today's alerts.
 
-AI can compress the drafting end of that chain. It cannot compress the part that requires knowing what your logs actually contain. This article is about telling those two apart.
+AI can compress parts of that work. What it can safely do changes with the amount of grounding available. The useful way to think about AI-assisted detection engineering is therefore not "generate me a rule", but a four-stage loop:
 
----
+1. make the source legible;
+2. decide what is worth detecting;
+3. tune what fires against real operational data;
+4. turn external threat intelligence into maintainable coverage.
 
-## The coverage problem
-
-Detection coverage always lags the threat landscape, and the reason is arithmetic, not skill. Every technique worth detecting needs a rule. Every rule needs someone who understands the log source, the field layout, and the false-positive surface well enough to write something that fires on the right events and stays quiet on the rest. That person is the same person handling today's alerts.
-
-So coverage is rationed by attention. New techniques queue behind operational load. The rule that would have caught something sits half-drafted in a branch while the analyst who started it gets pulled into an incident. Meanwhile the window during which the technique goes undetected stays open.
-
-The bottleneck is not that engineers can't write rules. It is that writing a *correct, tested* rule is slow, and the slowness compounds across every technique nobody has gotten to yet. Speed at the drafting stage is worth real money here — provided it does not come at the cost of correctness.
-
-Validation before automation. In detection engineering that phrase has a specific, unforgiving meaning: a rule you have not tested is a rule you do not have.
+At every stage the model proposes. Wazuh and a reviewer validate.
 
 ---
 
-## MITRE ATT&CK to Wazuh: the translation problem
+## Stage 1: Make the Log Source Legible
 
-ATT&CK is a catalogue of adversary behaviour. It tells you that a technique exists, describes how it works in prose, and gives procedure examples. What it does not give you is a Wazuh rule, because it cannot — it does not know which log sources you run, which decoders are active, or what your events look like on the wire.
+Before threat modelling, an unparsed source needs a decoder and a small set of baseline rules. The goal is not yet to decide what is malicious. The goal is to make the source addressable so later rules can match on stable fields rather than brittle raw strings.
 
-That is the translation gap. "This technique achieves persistence via a scheduled task" is a sentence. A Wazuh rule needs to know: which log records a scheduled-task creation in your environment, which decoded field holds the task name, what value distinguishes malicious from routine, and which parent rule the new rule should build on. None of that is in the ATT&CK entry. All of it lives in your logs.
+`wazuh-logtest` is the grounding mechanism for this step. It pushes a sample through Wazuh's pre-decoding, decoding, and rule-matching pipeline and shows what Wazuh itself sees.
 
-AI can help bridge the gap — but only from the side it can see. A model can read the technique description and propose *what to look for*. It cannot tell you *whether your logs contain it*. Hand it the technique alone and it will confidently invent field names that sound right and do not exist in your data. The model's fluency is highest exactly where its grounding is weakest, which is the most dangerous combination detection engineering offers.
+```bash
+echo '2026-08-04T09:12:44Z appsrv01 acme-portal: auth login_failed user=jdoe src=203.0.113.44 reason=bad_password' \
+  | /var/ossec/bin/wazuh-logtest -v
+```
+
+An unhandled source may stop at something like:
+
+```text
+**Phase 1: Completed pre-decoding.
+        timestamp: '2026-08-04T09:12:44Z'
+        hostname: 'appsrv01'
+        program_name: 'acme-portal'
+
+**Phase 2: Completed decoding.
+        No decoder matched.
+```
+
+That output is more useful to a model than a product name and a vague request for a decoder. Give the model representative raw samples and the actual logtest output, ask it to propose a decoder, then run every sample back through logtest. If Phase 2 does not expose the fields the model claimed it would extract, the draft is wrong.
+
+A practical sample set should include normal traffic, failures, administrative actions, edge cases, and malformed or partial records. Twenty to fifty lines can be enough to start, but the number matters less than message-type coverage. A random slice of a quiet Tuesday is not a specification for everything the application can emit.
+
+Prefer Wazuh's conventional static field names where the semantics fit: `srcip`, `dstip`, `srcuser`, `dstuser`, `url`, `action`, and `status`. Wazuh's decoder schema explicitly supports these fields, and using them keeps the new source compatible with rules and correlations that already expect those names. Dynamic fields remain appropriate for application-specific data that does not map cleanly onto the static vocabulary.
+
+A decoder draft might look like this conceptually:
+
+```xml
+<decoder name="acme-portal">
+  <program_name>^acme-portal$</program_name>
+</decoder>
+
+<decoder name="acme-portal-auth">
+  <parent>acme-portal</parent>
+  <regex>^auth (\S+) user=(\S+) src=(\S+) reason=(\S+)$</regex>
+  <order>action,srcuser,srcip,status</order>
+</decoder>
+```
+
+Do not treat that XML as correct merely because it looks plausible. Decoder behaviour depends on the exact input after pre-decoding and on the regex semantics Wazuh applies. Save the candidate in the test environment and verify it with `wazuh-logtest` against the real samples.
+
+Baseline rules should be deliberately boring: enough structure to identify event classes and support later child rules, without pretending that every log message deserves an alert. Custom rule IDs should also follow the range recommended by the Wazuh version you run; current Wazuh documentation recommends `100000` to `120000` for custom rules.
+
+The blind spot at this stage is completeness. You rarely know every message type on day one. Keep a process for sampling decoded-but-unclassified events and revisit the source after upgrades, incidents, and new feature rollouts. Coverage begins as an inventory and improves over time.
 
 ---
 
-## Prompt engineering for rule generation
+## Stage 2: Threat Modelling Produces the Detection Backlog
 
-What works is giving the model the half of the problem it cannot see: your logs.
+Stage 1 tells you what the source can say. It does not tell you what deserves an alert.
 
-A rule-generation prompt that produces usable drafts includes a real decoded log sample, an explicit list of the fields available and what they mean, the parent rule to inherit from, and a hard constraint to only match on fields that appear in the sample. The technique description is the easy input. The log context is the input that keeps the output honest.
+If you skip threat modelling, your ruleset tends to mirror the log format: one rule for login failures, one for configuration changes, one for role updates, all with severity levels somebody guessed. That creates activity coverage, not threat coverage.
+
+Threat-model the asset instead. What does it do? Who can reach it? What would an attacker gain? Which attack paths matter in this environment? For each path, make an explicit decision: prevent, detect, or accept. Only the ones marked detect become detection requirements.
+
+| Attack path | Technique | Decision | Evidence available? |
+|---|---|---|---|
+| Password spraying against the portal | T1110.003 | Detect | Yes: `srcip`, `srcuser`, `action` |
+| Session token replayed from elsewhere | T1550.004 | Detect | No: no session identifier or user-agent telemetry |
+| Admin role granted outside change window | T1098 | Detect | Yes: `action=role_granted`, `dstuser` |
+
+The final column is the one that prevents imaginary detections. If the required evidence is absent, the output is a logging requirement, not an AI-generated rule.
+
+This is where model-assisted drafting starts paying off, because Stage 1 produced the grounding the model was missing: real decoded events and a verified field list.
 
 ```python
-prompt = f"""You are writing a Wazuh detection rule. Target the Wazuh version
-you validate against (state it explicitly; the schema differs between versions).
+prompt = f"""You are writing a Wazuh detection rule for Wazuh {wazuh_version}.
 
 TECHNIQUE
-{attack_technique_description}
+{technique_id}: {technique_description}
 
-DECODED LOG SAMPLE (a real event from this environment)
-{decoded_sample_json}
+DETECTION INTENT
+{detection_intent}
 
-AVAILABLE FIELDS (only these exist — do not invent others)
-{field_list_with_descriptions}
+DECODED SAMPLE
+{logtest_phase2}
+
+AVAILABLE FIELDS
+{field_list}
 
 PARENT RULE
-Build on rule id {parent_sid}. Use <if_sid>{parent_sid}</if_sid>.
+Use rule {parent_sid} via <if_sid>{parent_sid}</if_sid>.
 
 CONSTRAINTS
-- Match ONLY on fields present in the sample above.
-- Use <field name="..."> for decoded fields; do not guess field names.
-- Do not use elements you are not certain exist in the target Wazuh schema.
-- Output only the <rule> block, no commentary.
+- Match only on fields listed above.
+- Do not invent field names.
+- Use rule id="{assigned_sid}" exactly.
+- Prefer the narrowest condition that expresses the detection intent.
+- Output only the <rule> block.
 """
 ```
 
-What does not work is asking for a rule from the technique description alone. Without a log sample the model has nothing to ground the field names against, and it fills the vacuum with plausible fiction. The difference between the two prompts is the difference between a draft an engineer can refine and a draft an engineer has to debug from scratch — and debugging invented fields is slower than writing the rule by hand.
+The model should not be allowed to allocate its own rule ID in a shared repository. Assign it deterministically in the pipeline, check for collisions, instruct the model to use it, and enforce the value again before validation. Deterministic correction is cheaper and safer than trusting a probabilistic system with namespace management.
+
+### The XML Failure Modes That Still Matter
+
+Grounding reduces hallucinations; it does not give the model a Wazuh schema.
+
+Common failures include invented option values, incorrect inheritance, incompatible combinations of correlation elements, and IDs that collide with deployed rules. One especially useful distinction is between `<if_sid>` and `<if_matched_sid>`: the first builds on a rule matched in the same event-processing chain; the second is designed for temporal correlation and is used with `frequency` and `timeframe`.
+
+Another recurring mistake is plausible-but-invalid XML such as `<options>no_alert</options>`. Current Wazuh rules support the `noalert` attribute on `<rule>` and a defined set of `<options>` values such as `no_log`; `no_alert` is not one of them.
+
+No prompt eliminates these mistakes reliably. The answer is system validation.
 
 ---
 
-## The XML constraints AI gets wrong
+## Two Checks, Not One
 
-Even with good grounding, generated rules fail against the Wazuh parser in recognisable ways. The Wazuh rule schema is underrepresented in training data, so models reason about it by analogy to XML they have seen more of — and the analogies break.
+A generated detection needs two different tests because "loads" and "works" are different claims.
 
-The recurring failure modes are consistent enough to anticipate: elements that sound like they should exist but do not (a model may produce a construct like `<options>no_alert</options>`, which the parser rejects); attribute combinations the parser refuses; `<if_sid>` and `<if_matched_sid>` used interchangeably when they mean different things; and rules emitted without a valid `id` or with one that collides with an existing rule. Which specific constructs fail depends on the Wazuh version you validate against — confirm them against yours rather than trusting this list. Each looks correct. Each fails to load.
+First, run:
 
-There is no prompt clever enough to eliminate this reliably, because the model does not have a ground-truth schema — it has a probability distribution over text that resembles rules. The mitigation is not a better prompt. It is the verification loop from Article 1, applied without exception.
+```bash
+/var/ossec/bin/wazuh-analysisd -t
+```
 
----
+The `-t` mode tests the Wazuh configuration. In the workflow from Article 1, the candidate rule is placed temporarily under `/var/ossec/etc/rules/`, the command is executed, the file is removed regardless of outcome, and any error output is fed back into a bounded refinement loop.
 
-## Validation: the same bar
+Second, use `wazuh-logtest` with fixtures that express expected behaviour:
 
-An AI-generated detection rule faces exactly the same test as the suppression rules in Article 1: it gets written into a real Wazuh instance and checked with `wazuh-analysisd -t`. The daemon parses every rule file and exits non-zero with an error if anything fails to load. If the candidate rule fails, the error goes back to the model for a fix, and the loop runs a bounded number of times before giving up and logging the failure.
+- at least one event that **must trigger** the candidate;
+- one or more near-misses that **must not trigger** it;
+- for frequency/correlation rules, enough events in one logtest session to exercise the counter and timeframe semantics.
 
-The intent of the rule does not change the bar. A suppression rule that fails to load suppresses nothing. A detection rule that fails to load detects nothing — and unlike a suppression rule, its silence looks exactly like safety. That is the worse failure: a rule that loads incorrectly, or does not load at all, produces the same empty alert queue as a quiet network. You cannot tell "nothing happened" from "nothing was watching" by looking at the dashboard.
+`wazuh-logtest` is specifically intended for testing decoders and rules against supplied samples and reports which decoder fields and alerts match. That makes it the behavioural test that `wazuh-analysisd -t` is not.
 
-So detection rules earn no exemption. If anything they warrant more suspicion, because their failure is invisible where a suppression rule's failure is merely loud.
+This distinction matters more for detections than suppressions. A broken suppression is usually noisy. A broken detection can be perfectly silent. An empty alert queue looks the same whether nothing happened or nothing was watching.
 
-Loading correctly and matching correctly are two different claims, and only the first is checked by `wazuh-analysisd -t`. Closing that gap means the same `wazuh-logtest` pass Article 1 describes — the sample that should trigger the rule, and a near-miss that should not, run before the pull request opens. As in Article 1, that pass is the required next step for this loop, not something the code shown here already does; do not treat a rule that has only cleared `wazuh-analysisd -t` as behaviorally validated.
-
-A note on data flow, since this pipeline reads real logs: the log sample handed to the model is production data, with the same sensitivity as any alert in Article 1 — hostnames, accounts, paths. Everything Article 2 said about where that data is allowed to go applies here unchanged. The generation pipeline is backend-agnostic by the same design; the inference endpoint can and, for real log samples, should be one you control. Detection engineering does not get a governance discount.
-
----
-
-## Rules that age
-
-A rule is not finished when it loads. Techniques evolve — attackers change a flag, move to a different LOLBin, split one step into two — and a rule tuned to last year's procedure example quietly stops matching. The rule still loads. It still shows green. It just no longer catches the thing it was written for.
-
-This is a maintenance problem, and it is where AI's limits are sharpest. A model can draft a rule from a 2024 procedure example. It cannot tell you whether that example still reflects how the technique is used in 2026, because it does not watch your environment and does not know what changed. Rule decay is measured against reality, and the model has no access to reality — only to text about it.
-
-Someone has to own each rule past its creation: revisit it when the technique it targets shifts, confirm it still fires on current variants, retire it when the log source it depends on goes away. That ownership is a technical discipline — testing, coverage tracking, regression against known-good events. (Who is *accountable* when a decayed rule misses an intrusion is a different question, an organisational one, and Article 5 takes it up. Here the point is narrower: the rule itself needs a technical owner who keeps it alive.)
-
-AI drafts. It does not maintain. Nothing about generating a rule faster changes the fact that a rule is a living thing with an owner.
+The same standard applies to hand-written rules. AI does not create a new validation category; it simply makes it easier to generate more candidates, which makes hard validation more important rather than less.
 
 ---
 
-## What AI cannot do here
+## Stage 3: Tune Against Real Alerts Without Blinding the Ruleset
 
-The hard boundary is grounding. A rule without log knowledge is a rule without grounding, and no amount of model capability substitutes for it.
+Rules from Stage 2 eventually meet production. Some produce useful signal. Others expose the assumptions the threat model and test fixtures did not capture.
 
-The model cannot tell you whether a given field exists in your environment, only whether it exists in the sample you showed it. It cannot tell you whether your log format matches the assumption baked into a public procedure example. It cannot tell you whether the rule fires on the events that matter, or merely on the events that happened to be in the sample. Every one of those questions is answered by someone who has read the logs — watched them at volume, seen the routine noise, learned which fields are reliably populated and which are empty half the time.
+This is where the false-positive workflow from Article 1 attaches. A model can classify recurring noise, draft a narrow suppression rule, and open a pull request. The important constraint is narrowness: suppress the known-good behaviour, not the parent rule that also catches malicious variants.
 
-That is the engineer's contribution, and it is not a formality. It is the part of detection engineering that determines whether a rule works, and it is exactly the part AI cannot see.
+A safe tuning rule normally constrains several independent attributes when the telemetry supports them: process image, command line, parent image, parent command line, user, host role, or another stable property of the legitimate behaviour. The reviewer should be able to answer one question from the diff: *what maliciously interesting variation would still alert?*
+
+Model confidence is not proof here. Article 1 uses an 80% threshold as a routing heuristic and explicitly notes that such a number must be calibrated against labelled historical alerts. The relevant metric is not generic accuracy. It is the rate at which true threats would be incorrectly suppressed.
+
+The pipeline should also refuse duplicate work. If an open tuning PR already exists for a rule family or target rule ID, skip the new proposal or append evidence to the existing review context instead of flooding the queue.
+
+### Deployment Is a Separate Gate
+
+Passing validation is not deployment. Merge approval is the human gate, and applying the merged files is an operational action with its own failure modes.
+
+For current Wazuh releases, saved rule and decoder changes can be tested with `wazuh-logtest`, but the Wazuh documentation instructs operators to restart the manager for the changes to generate production alerts. `wazuh-control reload` exists, but the Wazuh documentation recommends `systemctl` or the platform service command for service lifecycle operations to avoid status inconsistencies.
+
+That means a deployment pipeline should make the restart strategy explicit rather than hiding it behind an ambiguous "reload" step. In a clustered or highly available environment, the exact rollout procedure deserves the same care as any other security-control deployment.
+
+---
+
+## Working With Real Alert Data
+
+Stages 1 and 2 can often use curated or synthetic samples. Stage 3 operates on production alerts and therefore sees the data Article 2 treats as sensitive: hostnames, accounts, source addresses, file paths, command lines, internal topology, and potentially incident details.
+
+The model boundary is consequently part of the detection architecture.
+
+Do not assume a general API agreement covers security telemetry. Confirm the applicable processing terms, customer commitments, retention behaviour, and regional requirements. Where possible, minimise the payload before inference and keep the dispatch layer backend-agnostic so moving from a hosted model to an internally operated endpoint does not require redesigning the pipeline.
+
+The same principle used throughout this series applies: judgment before delegation. A model should receive only the data needed for the task and only after the organisation has decided where that data is allowed to go.
+
+---
+
+## Stage 4: Turn CTI Into Maintainable Coverage
+
+Once the earlier stages are working, external reporting becomes an input instead of a fire drill. A vendor report, sector advisory, or exploitation write-up arrives as prose. The detection-engineering job is to turn it into one of three outputs:
+
+- a detection candidate;
+- a logging gap;
+- a documented decision not to detect.
+
+Models are useful at extracting candidate observables and behaviours from long reports, but those outputs have different shelf lives.
+
+**Observables** such as hashes, domains, and IP addresses decay quickly. Where Wazuh CDB lists fit the use case, keep the volatile values in the list and reference it from a stable rule:
+
+```xml
+<rule id="100310" level="10">
+  <if_sid>100200</if_sid>
+  <list field="srcip" lookup="address_match_key">etc/lists/cti-known-c2</list>
+  <description>acme-portal: source address appears on the CTI watchlist</description>
+</rule>
+```
+
+For IP fields, `address_match_key` is the documented lookup mode. The list must be declared in the Wazuh ruleset configuration. A critical operational detail is that CDB lists are built and loaded when the analysis engine starts; current Wazuh documentation therefore requires a manager restart after adding or modifying a CDB list. Treat feed refresh as a controlled deployment event, not merely a text-file edit.
+
+**Behaviours** generally age more slowly and justify dedicated rules. Feed them back through Stage 2 with the verified field inventory attached, then through both validation checks. If a report describes evidence you do not collect, the correct result is still a telemetry requirement rather than a fabricated approximation.
+
+CTI can also change the threat model itself. A technique previously accepted as low priority may become relevant when a campaign begins targeting your sector. That moves the entry from accept to detect and starts the cycle again.
+
+---
+
+## What None of This Fixes
+
+Rules decay.
+
+Attackers change flags, switch binaries, alter parent-child relationships, or split one procedure into several steps. A rule written against last year's procedure example can continue to load successfully while no longer matching the behaviour it was created for.
+
+That is why every detection needs a technical owner and a review trigger. Revisit rules when the associated technique changes, when the log source changes schema, after major application upgrades, and when incidents expose missed variants. Keep positive and negative fixtures beside the rule where practical so regression tests survive longer than the memory of the engineer who wrote it.
+
+AI does not maintain a rule merely because it generated the first draft. It has no independent view of your environment, no knowledge of which fields are intermittently empty, and no way to infer that a silent rule has become obsolete unless you provide evidence.
+
+The hard boundary is grounding. The model knows only what you show it. `wazuh-logtest`, `wazuh-analysisd -t`, operational telemetry, and human review are what connect generated text back to reality.
 
 ---
 
 ## Conclusion
 
-AI compresses the drafting cycle in detection engineering, and the compression is real — a grounded prompt plus a hard validation loop turns hours of schema-wrangling into minutes of review. That is worth having when coverage is rationed by attention and every undrafted rule is an open window.
+Coverage builds in order. Decode the source before writing rules for it. Model the threat before deciding what deserves an alert. Validate both configuration and behaviour before review. Tune against real alerts without suppressing the signal you still need. Consume CTI only through a pipeline that can distinguish volatile observables from durable behaviours and can deploy changes safely.
 
-But it compresses only the half of the work the model can see. The other half — knowing which logs exist, what they contain, whether the rule catches the real thing — stays with the engineer who has read them. From a detection-engineering standpoint, that is the whole job: the model proposes what to look for, and only someone who operates the environment can confirm it can see it.
+AI can compress work at every stage: decoder drafting, field mapping, rule authoring, false-positive analysis, documentation, and CTI extraction. What it does not compress is the need to know what your logs contain and to prove that the resulting control behaves as intended.
 
 Validation before automation. A rule you have not tested is a rule you do not have — and a rule tested against logs you do not understand is a rule you only think you have.
 
 ---
+
+*Technical note: the Wazuh-specific syntax and operational statements in this revision were checked against the current Wazuh 4.14 documentation in August 2026. Production environments should validate against the exact version they run.*
 
 *Next in this series: [Alert Enrichment and Triage Automation](./04-alert-enrichment-triage.md)*
