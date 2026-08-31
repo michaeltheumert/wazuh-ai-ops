@@ -4,7 +4,7 @@
 
 ---
 
-## Two Kinds of Blind Spot
+## Two kinds of blind spot
 
 A new application goes live and its logs start arriving a week later. They reach the Wazuh manager, they are written to disk, and little else happens. No useful decoder claims the payload, no dependable fields are extracted, and every downstream detection idea is forced to work against raw text.
 
@@ -23,7 +23,7 @@ At every stage the model proposes. Wazuh and a reviewer validate.
 
 ---
 
-## Stage 1: Make the Log Source Legible
+## Stage 1: make the log source legible
 
 Before threat modelling, an unparsed source needs a decoder and a small set of baseline rules. The goal is not yet to decide what is malicious. The goal is to make the source addressable so later rules can match on stable fields rather than brittle raw strings.
 
@@ -74,7 +74,7 @@ The blind spot at this stage is completeness. You rarely know every message type
 
 ---
 
-## Stage 2: Threat Modelling Produces the Detection Backlog
+## Stage 2: threat modelling produces the detection backlog
 
 Stage 1 tells you what the source can say. It does not tell you what deserves an alert.
 
@@ -121,7 +121,7 @@ CONSTRAINTS
 
 The model should not be allowed to allocate its own rule ID in a shared repository. Assign it deterministically in the pipeline, check for collisions, instruct the model to use it, and enforce the value again before validation. Deterministic correction is cheaper and safer than trusting a probabilistic system with namespace management.
 
-### The XML Failure Modes That Still Matter
+### The XML failure modes that still matter
 
 Grounding reduces hallucinations; it does not give the model a Wazuh schema.
 
@@ -133,7 +133,7 @@ No prompt eliminates these mistakes reliably. The answer is system validation.
 
 ---
 
-## Two Checks, Not One
+## Two checks, not one
 
 A generated detection needs two different tests because "loads" and "works" are different claims.
 
@@ -159,7 +159,7 @@ The same standard applies to hand-written rules. AI does not create a new valida
 
 ---
 
-## Stage 3: Tune Against Real Alerts Without Blinding the Ruleset
+## Stage 3: tune against real alerts without blinding the ruleset
 
 Rules from Stage 2 eventually meet production. Some produce useful signal. Others expose the assumptions the threat model and test fixtures did not capture.
 
@@ -171,7 +171,7 @@ Model confidence is not proof here. Article 1 uses an 80% threshold as a routing
 
 The pipeline should also refuse duplicate work. If an open tuning PR already exists for a rule family or target rule ID, skip the new proposal or append evidence to the existing review context instead of flooding the queue.
 
-### Deployment Is a Separate Gate
+### Deployment is a separate gate
 
 Passing validation is not deployment. Merge approval is the human gate, and applying the merged files is an operational action with its own failure modes.
 
@@ -181,7 +181,7 @@ That means a deployment pipeline should make the restart strategy explicit rathe
 
 ---
 
-## Working With Real Alert Data
+## Working with real alert data
 
 Stages 1 and 2 can often use curated or synthetic samples. Stage 3 operates on production alerts and therefore sees the data Article 2 treats as sensitive: hostnames, accounts, source addresses, file paths, command lines, internal topology, and potentially incident details.
 
@@ -193,13 +193,15 @@ The same principle used throughout this series applies: judgment before delegati
 
 ---
 
-## Stage 4: Turn CTI Into Maintainable Coverage
+## Stage 4: turn CTI into maintainable coverage
 
 Once the earlier stages are working, external reporting becomes an input instead of a fire drill. A vendor report, sector advisory, or exploitation write-up arrives as prose. The detection-engineering job is to turn it into one of three outputs:
 
 - a detection candidate;
 - a logging gap;
 - a documented decision not to detect.
+
+Article 4 uses threat intelligence to enrich an alert that has already fired; here, threat intelligence changes what may fire in the future.
 
 Models are useful at extracting candidate observables and behaviours from long reports, but those outputs have different shelf lives.
 
@@ -221,7 +223,7 @@ CTI can also change the threat model itself. A technique previously accepted as 
 
 ---
 
-## What None of This Fixes
+## What none of this fixes
 
 Rules decay.
 
