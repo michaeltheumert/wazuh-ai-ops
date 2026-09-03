@@ -10,7 +10,7 @@ You open the next alert in the queue. Failed logins followed by a success, from 
 
 You still can't triage it. Everything that would make the decision easy lives somewhere else. Is that address a VPN egress? Is the account a service principal that logs in oddly by design? Has it turned up in four other alerts this week? The alert reports that something happened but answers none of that.
 
-Good triage runs on the context around an alert rather than the data inside it, and that is where a Tier-1 shift goes. A machine can assemble it in seconds. What happens to it afterwards is where the human experience has to hold.
+Good triage runs on the context around an alert rather than the data inside it. A machine can assemble it in seconds. What happens to it afterwards is where the human experience has to hold.
 
 ---
 
@@ -33,7 +33,7 @@ Watch an experienced analyst triage that alert and most of what they do is retri
 
 The work is answering them. Each answer lives in a different system: a threat-intel feed, the asset inventory, the directory, an HR calendar, Wazuh's own indexer. The senior analyst's advantage is knowing which holds which.
 
-That is retrieval-and-assembly work, which machines are good at, and exactly what a Tier-1 analyst is still learning. The gap between "the data exists" and "the decision is easy" is an assembly gap.
+That is retrieval-and-assembly work, which machines are good at, and exactly what a Tier-1 analyst is still learning and a senior analyst often does not have the time for. The gap between "the data exists" and "the decision is easy" is an assembly gap.
 
 ---
 
@@ -109,7 +109,7 @@ A runnable version of the orchestrator lives in [`workflows/`](../workflows/) �
 
 The model receives that object whole: Every source, every gap, nothing pre-filtered — and does two things with it.
 
-The first is correlation, the part that saves real time. One at a time the facts are unremarkable: the address is flagged in threat intel, the account is a service principal, the rule has not fired on this host in seven days, travel status is unknown. Read together they form a shape, and reading five sources together is the step a Tier-1 analyst is slowest at.
+The first is correlation, the part that saves real time. One at a time the facts are unremarkable: the address is flagged in threat intel, the account is a service principal, the rule has not fired on this host in seven days, travel status is unknown. Read together they form a shape, and reading five sources together is the step a analyst is slowest at.
 
 The second is summarising that shape. The prompt asks for a brief and forbids a verdict:
 
@@ -165,7 +165,7 @@ That is the analyst's contribution. Knowing that this service account logs in at
 
 ## Conclusion
 
-AI assembles context at a speed no analyst can match — correlate the information from five systems queried in parallel, correlated and summarised before a person has finished reading the alert. For a Tier-1 queue rationed by the cost of context that is a real gain, and it makes analysts faster at the part of the job.
+AI assembles context at a speed no analyst can match — correlate the information from five systems queried in parallel, correlated and summarised before a person has finished reading the alert. For a queue rationed by the cost of context that is a real gain, and it makes analysts faster at the part of the job.
 
 Assembling context is not judging it. The architecture is built so that distinction cannot quietly erode: the orchestrator fetches, the model correlates, the analyst sets the disposition, and no layer reaches into the next.
 
