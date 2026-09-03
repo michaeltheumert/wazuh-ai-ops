@@ -187,7 +187,7 @@ Stages 1 and 2 can often use curated or synthetic samples. Stage 3 operates on p
 
 The model boundary is consequently part of the detection architecture.
 
-Do not assume a general API agreement covers security telemetry. Confirm the applicable processing terms, customer commitments, retention behaviour, and regional requirements. Where possible, minimise the payload before inference and keep the dispatch layer backend-agnostic so moving from a hosted model to an internally operated endpoint does not require redesigning the pipeline.
+Do not assume a general DPA agreement covers security telemetry. Confirm the applicable processing terms, customer commitments, retention behaviour, and regional requirements. Where possible, minimise the payload before inference and keep the dispatch layer backend-agnostic so moving from a hosted model to an internally operated endpoint does not require redesigning the pipeline.
 
 The same principle used throughout this series applies: judgment before delegation. A model should receive only the data needed for the task and only after the organisation has decided where that data is allowed to go.
 
@@ -243,7 +243,7 @@ Coverage builds in order. Decode the source before writing rules for it. Model t
 
 AI can compress work at every stage: decoder drafting, field mapping, rule authoring, false-positive analysis, documentation, and CTI extraction. What it does not compress is the need to know what your logs contain and to prove that the resulting control behaves as intended.
 
-Validation before automation. A rule you have not tested is a rule you do not have — and a rule tested against logs you do not understand is a rule you only think you have.
+Validation before automation. A rule you have not tested is a rule you do not have and a rule tested against logs you do not understand is a rule you only think you have.
 
 ---
 
