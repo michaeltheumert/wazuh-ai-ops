@@ -50,12 +50,12 @@ def matched_rule_ids(output: str) -> set[str]:
     return set(RULE_ID_RE.findall(output))
 
 
-def run_logtest(container: str, event: str) -> tuple[set[str], str]:
+def run_logtest(container: str, event: str) -> tuple[int, set[str], str]:
     result = run(
         ["docker", "exec", "-i", container, "/var/ossec/bin/wazuh-logtest"],
         stdin=event + "\n",
     )
-    return matched_rule_ids(result.stdout), result.stdout
+    return result.returncode, matched_rule_ids(result.stdout), result.stdout
 
 
 def check_events(
@@ -68,7 +68,17 @@ def check_events(
 ) -> bool:
     ok = True
     for index, event in enumerate(fixtures, start=1):
-        rule_ids, output = run_logtest(container, event)
+        returncode, rule_ids, output = run_logtest(container, event)
+        if returncode != 0:
+            # A technical failure (bad path, container down, docker error) is not
+            # "no rule matched" — it must never be read as a passed negative fixture.
+            ok = False
+            print(f"[ERROR] {label} fixture {index}: wazuh-logtest exited {returncode}; "
+                  f"treating this as a failed check, not as a non-match")
+            print("  event:", event)
+            print("  wazuh-logtest output:")
+            print(output.rstrip())
+            continue
         matched = expected_rule_id in rule_ids
         passed = matched if should_match else not matched
         status = "PASS" if passed else "FAIL"
