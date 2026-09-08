@@ -42,7 +42,7 @@ article/05-ai-does-not-replace-analysts
 1. Lead author opens a Pull Request from the article branch to `main`
 2. Co-author reviews — comments are line-specific (GitHub review mode)
 3. Lead author addresses feedback, marks threads resolved
-4. Both authors explicitly approve the PR (GitHub "Approve" review)
+4. The non-authoring co-author explicitly approves (GitHub "Approve" review) — the lead author cannot approve their own PR
 5. Lead author merges — then submits to Wazuh Ambassador Program
 
 ### Review Language
@@ -50,15 +50,9 @@ article/05-ai-does-not-replace-analysts
 Internal communication, PR comments, and review notes: **German, per Du**.  
 All article content: **English**.
 
-### Timeline
+### Publication order
 
-| Month | Article | Lead |
-|-------|---------|------|
-| August 2026 (Week 1) | 01 – Taming Alert Fatigue | Theumert |
-| August 2026 (Week 2) | 02 – Responsible AI in Security Operations | Theumert + Sigl |
-| August 2026 (Week 3) | 03 – Detection Engineering at Scale | Sigl |
-| August 2026 (Week 4) | 04 – Alert Enrichment and Triage Automation | Sigl |
-| September 2026 (Week 1) | 05 – AI Does Not Replace Analysts | Theumert |
+Articles are written and reviewed in numeric order (01 → 05); each is merged to `main` only once mutually approved. Actual publication dates are tracked in the LinkedIn content package, not here, so this document doesn't go stale every time a date shifts.
 
 ### Submission
 

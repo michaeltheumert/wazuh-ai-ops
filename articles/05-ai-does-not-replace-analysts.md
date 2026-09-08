@@ -46,7 +46,7 @@ Read as a set, the pipelines make the pattern explicit.
 
 **Article 2** put real telemetry through a model, then insisted the choice of where that model runs be made and signed before anything went live. The pipeline processes; a human owns the governance decision.
 
-**Article 3** generated detection rules for techniques nobody had covered yet — then subjected each to the same validation bar as a hand-written rule, because a rule that loads wrong is silent, not safe. The model drafts; a human owns whether the environment can actually see the threat.
+**Article 3** treated detection engineering as a four-stage loop — legible logs, threat modelling, tuning against production alerts, and CTI-driven coverage — and subjected every generated rule to the same validation bar as a hand-written one, because a rule that loads wrong is silent, not safe. The model drafts; a human owns whether the environment can actually see the threat.
 
 **Article 4** assembled triage context five systems deep and handed the analyst a readable brief — explicitly not a disposition. The model surfaces; a human decides.
 
