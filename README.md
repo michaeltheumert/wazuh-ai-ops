@@ -34,7 +34,7 @@ wazuh-ai-ops/
 └── README.md
 ```
 
-> **Status:** The articles publish monthly starting August 2026. Code and rule examples land alongside each article. Until an example is marked *validated*, treat it as a reference to test in your own environment — see [Validation](#validation) below.
+> **Status:** Articles and code examples are versioned together in this repository. Until an example is marked *validated*, treat it as a reference to test in your own environment — see [Validation](#validation) below.
 
 ---
 
@@ -44,8 +44,8 @@ wazuh-ai-ops/
 |---|---------|-------|---------------|
 | 1 | [Taming Alert Fatigue](./articles/01-taming-alert-fatigue.md) | Improve | How can AI reduce false positives without new blind spots? |
 | 2 | [Responsible AI in Security Operations](./articles/02-responsible-ai-operations.md) | Govern | When is AI *allowed* to process real security telemetry? |
-| 3 | [Detection Engineering at Scale](./articles/03-detection-engineering-scale.md) | Detect | Can AI help write rules for techniques not yet seen? |
-| 4 | [Alert Enrichment and Triage Automation](./articles/04-alert-enrichment-triage.md) | Understand | Can AI give analysts senior-level context at speed? |
+| 3 | [Detection Engineering at Scale](./articles/03-detection-engineering-scale.md) | Detect | Can AI carry detection engineering from raw logs to threat-driven coverage? |
+| 4 | [Alert Enrichment and Triage Automation](./articles/04-alert-enrichment-triage.md) | Understand | Can automation assemble context fast without taking the decision from the analyst? |
 | 5 | [AI Does Not Replace Analysts](./articles/05-ai-does-not-replace-analysts.md) | Reflect | Which decisions must stay human, and why? |
 
 Start with the article closest to your problem, or read [the series intro](./articles/00-series-intro.md) for the full arc.
@@ -54,7 +54,7 @@ Start with the article closest to your problem, or read [the series intro](./art
 
 ## The architecture in one paragraph
 
-A new Wazuh alert enters the pipeline. A lightweight model classifies whether it is a false positive and how confident it is; only high-confidence cases proceed. A higher-capability model drafts the narrowest possible suppression or detection rule. That rule is written into a real Wazuh instance and checked with `wazuh-analysisd -t` — if it fails to load, the daemon's error goes back to the model for a bounded number of fix attempts. A rule that passes opens a pull request with a readable, auditable summary. A human reviews and merges. The model dispatch layer is abstracted, so the inference backend — public API or self-hosted — is a configuration choice, not a rewrite. See [`assets/diagrams/architecture.md`](./assets/diagrams/architecture.md) for the full diagram and the reasoning behind each boundary.
+A new Wazuh alert enters the pipeline. A lightweight model classifies whether it is a false positive and how confident it is; only high-confidence cases proceed. A higher-capability model drafts the narrowest possible suppression or detection rule. That rule is written into a real Wazuh instance and checked with `wazuh-analysisd -t` — if it fails to load, the daemon's error goes back to the model for a bounded number of fix attempts. A rule that passes then has to prove its match behavior with `wazuh-logtest` against positive and negative fixture events. Only after both checks pass does the pipeline open a pull request with a readable, auditable summary. A human reviews and merges. The model dispatch layer is abstracted, so the inference backend — public API or self-hosted — is a configuration choice, not a rewrite. See [`assets/diagrams/architecture.md`](./assets/diagrams/architecture.md) for the full diagram and the reasoning behind each boundary.
 
 ---
 
@@ -67,6 +67,8 @@ The rules and pipelines here are examples, and the series is explicit that a rul
 3. Run `/var/ossec/bin/wazuh-analysisd -t` and confirm it loads without error.
 4. Confirm it fires on the events you expect — and stays quiet on the ones you don't.
 5. Do this with `wazuh-logtest`, not by inspection: feed it real or synthetic log lines that should match, and lines that deliberately should not. A rule that loads is a rule that parses — not a rule that matches correctly.
+
+The reference validator in [`workflows/validate-wazuh-rule.py`](./workflows/validate-wazuh-rule.py) enforces both halves of that contract: a candidate rule must pass `wazuh-analysisd -t`, then match the expected rule ID for every positive fixture and avoid that rule ID for every negative fixture before the command returns success.
 
 Examples that have been validated against a specific version say so, and name the version. Examples that have not are marked as unvalidated references. We do not assert rule behaviour from documentation alone.
 
