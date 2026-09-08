@@ -143,7 +143,7 @@ First, run:
 /var/ossec/bin/wazuh-analysisd -t
 ```
 
-The `-t` mode tests the Wazuh configuration. In the workflow from Article 1, the candidate rule is placed temporarily under `/var/ossec/etc/rules/`, the command is executed, the file is removed regardless of outcome, and any error output is fed back into a bounded refinement loop.
+The `-t` mode tests the Wazuh configuration. In the workflow from Article 1, the candidate rule is placed temporarily under `/var/ossec/etc/rules/` before the command is executed, and any error output is fed back into a bounded refinement loop.
 
 Second, use `wazuh-logtest` with fixtures that express expected behaviour:
 
@@ -153,7 +153,7 @@ Second, use `wazuh-logtest` with fixtures that express expected behaviour:
 
 `wazuh-logtest` is specifically intended for testing decoders and rules against supplied samples and reports which decoder fields and alerts match. That makes it the behavioural test that `wazuh-analysisd -t` is not.
 
-Article 1's reference validator (`workflows/validate-wazuh-rule.py`) orchestrates both checks from a single command: it runs the parser check first and only proceeds to the fixture-based `wazuh-logtest` pass if the rule loads. One invocation, but two separate results — orchestration does not collapse the distinction between them.
+Article 1's reference validator (`workflows/validate-wazuh-rule.py`) orchestrates both checks from a single command: it runs the parser check first and proceeds to the fixture-based `wazuh-logtest` pass only if the rule loads. The candidate is removed in a `finally` block when validation ends, including when the parser check fails. One invocation, but two separate results — orchestration does not collapse the distinction between them. One current limitation: the validator opens a fresh `wazuh-logtest` session per fixture line, so it does not yet exercise the multi-event, single-session behaviour that frequency and correlation rules need — that check is still manual.
 
 This distinction matters more for detections than suppressions. A broken suppression is usually noisy. A broken detection can be perfectly silent. An empty alert queue looks the same whether nothing happened or nothing was watching.
 

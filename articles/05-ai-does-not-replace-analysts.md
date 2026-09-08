@@ -42,7 +42,7 @@ Everything interesting happens in the middle, and that is exactly where the four
 
 Read as a set, the pipelines make the pattern explicit.
 
-**Article 1** compressed the false-positive cycle from weeks to minutes. The model classified, drafted, and validated — but the pull request asked a human for a review decision, not for authorship. The analyst still merges.
+**Article 1** compressed the false-positive cycle from weeks to minutes. The model classified and drafted; Wazuh validated — but the pull request asked a human for a review decision, not for authorship. The analyst still merges.
 
 **Article 2** put real telemetry through a model, then insisted the choice of where that model runs be made and signed before anything went live. The pipeline processes; a human owns the governance decision.
 
@@ -112,7 +112,7 @@ Neither is a slogan. They are the two conditions under which AI integration in s
 
 AI does not replace analysts. It reallocates the boundary between routine work and judgment — moving the routine to the machine and leaving the judgment, and the accountability that comes with it, where it has to stay. That boundary is not fixed by what the technology can do. It is decided by what an organisation can answer for. Decide it deliberately, document it, and revisit it as the models change.
 
-None of this is abstract in a Wazuh operation. It is the merge on a suppression rule, the signature on an ADR, the ownership of a detection, the analyst who reads the brief and makes the call. Five pipelines, five places the boundary was drawn on purpose. That deciding is the work that stays human. It always was.
+None of this is abstract in a Wazuh operation. It is the merge on a suppression rule, the signature on an ADR, the ownership of a detection, the analyst who reads the brief and makes the call. Four pipelines, four places the boundary was drawn on purpose. That deciding is the work that stays human. It always was.
 
 ---
 
