@@ -153,6 +153,8 @@ Second, use `wazuh-logtest` with fixtures that express expected behaviour:
 
 `wazuh-logtest` is specifically intended for testing decoders and rules against supplied samples and reports which decoder fields and alerts match. That makes it the behavioural test that `wazuh-analysisd -t` is not.
 
+Article 1's reference validator (`workflows/validate-wazuh-rule.py`) orchestrates both checks from a single command: it runs the parser check first and only proceeds to the fixture-based `wazuh-logtest` pass if the rule loads. One invocation, but two separate results — orchestration does not collapse the distinction between them.
+
 This distinction matters more for detections than suppressions. A broken suppression is usually noisy. A broken detection can be perfectly silent. An empty alert queue looks the same whether nothing happened or nothing was watching.
 
 The same standard applies to hand-written rules. AI does not create a new validation category; it simply makes it easier to generate more candidates, which makes hard validation more important rather than less.
