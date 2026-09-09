@@ -1,5 +1,5 @@
 {
-  "description": "Synthetic fixture for workflows/enrichment-triage.n8n.json. Its mock_enrichment_responses values are mirrored by hand into workflows/enrichment-triage.test.n8n.json's 'Load Fixture Data' node -- the test harness does not read this file at runtime, so the two must be kept in sync manually when either changes (the test harness file says so as well). All values below are invented for testing -- no real hostnames, IPs, usernames, or customer data. Mirrors the walkthrough example in Article 4 ('failed logins followed by a success, from an IP she doesn't recognise').",
+  "description": "Synthetic fixture for workflows/enrichment-triage.n8n.json. Its mock_enrichment_responses values are mirrored by hand into workflows/enrichment-triage.test.n8n.json's 'Load Fixture Data' node -- the test harness does not read this file at runtime, so the two must be kept in sync manually when either changes (the test harness file says so as well). All values below are invented for testing -- no real hostnames, IPs, usernames, or customer data. Mirrors the walkthrough example in Article 4 ('failed logins followed by a success, from a source address you don't recognise').",
   "input_webhook_payload": {
     "rule": {
       "id": "5715",
