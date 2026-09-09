@@ -31,7 +31,7 @@ Watch an experienced analyst triage that alert and most of what they do is retri
 - Is the user travelling? 
 - Has this address turned up before? 
 
-The work is answering them. Each answer lives in a different system: a threat-intel feed, the asset inventory, the directory, an HR calendar, Wazuh's own indexer. The senior analyst's advantage is knowing which holds which.
+The work is answering them. Each answer lives in a different system: a threat-intel feed, the asset inventory, the directory, an HR calendar, Wazuh's own indexer. Knowing which system holds which answer is its own kind of expertise, and no one starts out knowing it.
 
 That is retrieval-and-assembly work, which machines are good at, and exactly the kind of work that costs analysts time regardless of experience level. The gap between "the data exists" and "the decision is easy" is an assembly gap.
 
