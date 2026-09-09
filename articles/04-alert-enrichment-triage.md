@@ -33,7 +33,7 @@ Watch an experienced analyst triage that alert and most of what they do is retri
 
 The work is answering them. Each answer lives in a different system: a threat-intel feed, the asset inventory, the directory, an HR calendar, Wazuh's own indexer. The senior analyst's advantage is knowing which holds which.
 
-That is retrieval-and-assembly work, which machines are good at, and exactly what a Tier-1 analyst is still learning and a senior analyst often does not have the time for. The gap between "the data exists" and "the decision is easy" is an assembly gap.
+That is retrieval-and-assembly work, which machines are good at, and exactly the kind of work that costs analysts time regardless of experience level. The gap between "the data exists" and "the decision is easy" is an assembly gap.
 
 ---
 
@@ -109,7 +109,7 @@ A runnable version of the orchestrator lives in [`workflows/`](../workflows/) �
 
 The model receives that object whole: Every source, every gap, nothing pre-filtered — and does two things with it.
 
-The first is correlation, the part that saves real time. One at a time the facts are unremarkable: the address is flagged in threat intel, the account is a service principal, the rule has not fired on this host in seven days, travel status is unknown. Read together they form a shape, and reading five sources together is the step a analyst is slowest at.
+The first is correlation, the part that saves real time. One at a time the facts are unremarkable: the address is flagged in threat intel, the account is a service principal, the rule has not fired on this host in seven days, travel status is unknown. Read together they form a shape, and reading five sources together is the step an analyst is slowest at.
 
 The second is summarising that shape. The prompt asks for a brief and forbids a verdict:
 
@@ -127,7 +127,7 @@ CONTEXT OBJECT
 """
 ```
 
-A good brief reads like what a senior analyst says leaning over a junior's shoulder: the address is a flagged Tor exit and this account has never logged in from outside Germany, but it is a test service principal and travel status is unconfirmed — worth a look before you close it.
+A good brief reads like what an experienced analyst would flag first: the address is a flagged Tor exit and this account has never logged in from outside Germany, but it is a test service principal and travel status is unconfirmed. Worth a look before you close it.
 
 The analyst sees the brief and the full context object together. Every claim in the brief must be checkable against a field in the object: a summary you cannot verify against its inputs is an oracle, and an oracle cannot be audited. It is also the only defence against the model's characteristic failure — stating a missing fact with the same confidence as a known one.
 
@@ -149,7 +149,7 @@ Once a pipeline can act on what it reads, crafted telemetry is an attack surface
 
 ## Where this pipeline ends
 
-A SOAR platform can host the orchestrator, so it is worth stating where this pipeline stops. SOAR automates triage information gathering and response. For example following a paybook to isolate the host, disable the account, block the address. This pipeline automates triage information correlation, what a person needs to decide whether any action is warranted at all. Running both on one platform does not merge them: a mature SOC runs them in sequence, enrichment briefing the analyst, the analyst deciding, a response playbook executing what was approved.
+A SOAR platform can host the orchestrator, so it is worth stating where this pipeline stops. SOAR automates triage information gathering and response. For example following a playbook to isolate the host, disable the account, block the address. This pipeline automates triage information correlation, what a person needs to decide whether any action is warranted at all. Running both on one platform does not merge them: a mature SOC runs them in sequence, enrichment briefing the analyst, the analyst deciding, a response playbook executing what was approved.
 
 ---
 
@@ -165,7 +165,7 @@ That is the analyst's contribution. Knowing that this service account logs in at
 
 ## Conclusion
 
-AI assembles context at a speed no analyst can match — correlate the information from five systems queried in parallel, correlated and summarised before a person has finished reading the alert. For a queue rationed by the cost of context that is a real gain, and it makes analysts faster at the part of the job.
+AI assembles context at a speed no analyst can match: information from five systems, queried in parallel, correlated and summarised before a person has finished reading the alert. For a queue rationed by the cost of context that is a real gain, and it makes analysts faster at the part of the job.
 
 Assembling context is not judging it. The architecture is built so that distinction cannot quietly erode: the orchestrator fetches, the model correlates, the analyst sets the disposition, and no layer reaches into the next.
 
