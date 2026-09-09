@@ -33,8 +33,8 @@ The five articles move through the layers of a security operation, and the order
 |---|---------|-------|------------------------|
 | 1 | Taming Alert Fatigue | Improve | How can AI reduce false positives without creating new blind spots? |
 | 2 | Responsible AI in Security Operations | Govern | When is AI *allowed* to process real security telemetry? |
-| 3 | Detection Engineering at Scale | Detect | Can AI help write rules for techniques not yet seen? |
-| 4 | Alert Enrichment and Triage Automation | Understand | Can AI give analysts senior-level context at speed? |
+| 3 | Detection Engineering at Scale | Detect | Can AI carry detection engineering from raw logs to threat-driven coverage? |
+| 4 | Alert Enrichment and Triage Automation | Understand | Can automation assemble context fast without taking the decision from the analyst? |
 | 5 | AI Does Not Replace Analysts | Reflect | Which decisions must stay human, and why? |
 
 Article 1 establishes the core pattern on a concrete, bounded use case: AI drafts, the system validates against the running daemon, a human reviews. Article 2 comes second on purpose — governance is not an appendix to a working pipeline, it is the constraint that decides which pipelines are permitted at all. Articles 3 and 4 go deeper into detection and triage, each carrying the governance question forward rather than leaving it behind. Article 5 makes explicit what the first four demonstrate: the boundary between routine work and human judgment is an architectural decision, not a limitation waiting to be automated away.
